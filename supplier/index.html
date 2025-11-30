@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Supplier - Visualisation des Commandes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .order-card {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            padding: 15px;
+            background-color: #f9f9f9;
+        }
+        .order-header {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        .order-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .item-card {
+            background-color: white;
+            border: 1px solid #eee;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .timestamp {
+            color: #2196F3;
+            font-weight: bold;
+            font-size: 0.95em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Commandes Reçues</h1>
+    
+    <div class="controls">
+        <button onclick="refreshOrders()">Rafraîchir</button>
+    </div>
+    
+    <div id="ordersContainer"></div>
+
+    <script>
+
+        function refreshOrders() {
+            console.log('Fetching orders...');
+            fetch('http://localhost:5000/orders')
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error('Erreur réseau: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(orders => {
+                    console.log('Orders received:', orders);
+                    const container = document.getElementById('ordersContainer');
+                    if (!container) {
+                        throw new Error('Container element not found');
+                    }
+                    container.innerHTML = '';
+                    
+                    if (!Array.isArray(orders)) {
+                        throw new Error('Invalid orders data received');
+                    }
+
+                    if (orders.length === 0) {
+                        container.innerHTML = '<div>Aucune commande trouvée</div>';
+                        return;
+                    }
+                    
+                    orders.reverse().forEach(order => {
+                        const orderCard = document.createElement('div');
+                        orderCard.className = 'order-card';
+
+                        // Utiliser la date de commande si disponible, sinon la date actuelle
+                        let orderDate;
+                        if (order.orderDate) {
+                            orderDate = new Date(order.orderDate).toLocaleString('fr-FR', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit'
+                            });
+                        } else {
+                            orderDate = 'Date non disponible';
+                        }
+
+
+                        // Gestion sécurisée des données manquantes ou malformées
+                        const customerName = order.customer ? (order.customer.name || order.customer.n || 'Nom inconnu') : 'Client inconnu';
+                        const customerEmail = order.customer ? (order.customer.email || 'Email non fourni') : 'Email non fourni';
+                        const orderId = order.id || 'ID non fourni';
+                        const items = Array.isArray(order.items) ? order.items : [];
+
+                        orderCard.innerHTML = `
+                            <div class="order-header">
+                                <div>
+                                    <strong>Commande:</strong> ${orderId}<br>
+                                    <strong>Client:</strong> ${customerName} (${customerEmail})<br>
+                                    <strong>Date de commande:</strong> <span class="timestamp">${orderDate}</span>
+                                </div>
+                            </div>
+                            <div class="order-items">
+                                ${items.length > 0 ? items.map(item => `
+                                    <div class="item-card">
+                                        <strong>SKU:</strong> ${item.sku || 'SKU non fourni'}<br>
+                                        <strong>Quantité:</strong> ${item.qty || 0}
+                                    </div>
+                                `).join('') : '<div class="item-card">Aucun article</div>'}
+                            </div>
+                        `;
+
+                        container.appendChild(orderCard);
+                    });
+                })
+                .catch(error => {
+                    console.error('Erreur lors du chargement des commandes:', error);
+                    const container = document.getElementById('ordersContainer');
+                    if (container) {
+                        container.innerHTML = `
+                            <div style="color: red; padding: 10px; background-color: #ffebee; border: 1px solid #ffcdd2; border-radius: 4px;">
+                                <strong>Erreur lors du chargement des commandes:</strong><br>
+                                ${error.message}
+                            </div>`;
+                    }
+                });
+        }
+
+        // Ajouter un gestionnaire d'erreurs global
+        window.onerror = function(msg, url, line, col, error) {
+            console.error('Erreur globale:', { msg, url, line, col, error });
+            return false;
+        };
+
+        // Charger les commandes au démarrage
+        refreshOrders();
+    </script>
+</body>
+</html>

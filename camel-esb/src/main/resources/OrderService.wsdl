@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://schemas.xmlsoap.org/wsdl/"
+             xmlns:tns="http://example.com/order"
+             targetNamespace="http://example.com/order">
+  <!-- Minimal WSDL placeholder. The Camel CXF endpoint will expose a simple SOAP endpoint. -->
+</definitions>

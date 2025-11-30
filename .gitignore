@@ -1,0 +1,4 @@
+# ignore camel openjdk files
+/camel-esb/OpenJDK-24
+# ignore .vscode settings
+.vscode/

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Client - Saisie Commande</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"],
+        input[type="email"],
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #response {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #dff0d8;
+            border: 1px solid #d6e9c6;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            border: 1px solid #ebccd1;
+            color: #a94442;
+        }
+        #itemsContainer {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+        .item-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Saisie de Commande</h1>
+    
+    <form id="orderForm" onsubmit="return submitOrder(event)">
+        <div class="form-group">
+            <label for="orderId">Numéro de commande:</label>
+            <input type="text" id="orderId" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="customerName">Nom du client:</label>
+            <input type="text" id="customerName" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="customerEmail">Email du client:</label>
+            <input type="email" id="customerEmail" required>
+        </div>
+        
+        <div class="form-group">
+            <label>Articles:</label>
+            <div id="itemsContainer">
+                <div class="item-row">
+                    <input type="text" placeholder="SKU" required>
+                    <input type="number" placeholder="Quantité" min="1" required>
+                    <button type="button" onclick="removeItem(this)">Supprimer</button>
+                </div>
+            </div>
+            <button type="button" onclick="addItem()">Ajouter un article</button>
+        </div>
+        
+        <button type="submit">Envoyer la commande</button>
+    </form>
+    
+    <div id="response"></div>
+
+    <script>
+        function addItem() {
+            const container = document.getElementById('itemsContainer');
+            const row = document.createElement('div');
+            row.className = 'item-row';
+            row.innerHTML = `
+                <input type="text" placeholder="SKU" required>
+                <input type="number" placeholder="Quantité" min="1" required>
+                <button type="button" onclick="removeItem(this)">Supprimer</button>
+            `;
+            container.appendChild(row);
+        }
+
+        function removeItem(button) {
+            const row = button.parentElement;
+            if (document.getElementsByClassName('item-row').length > 1) {
+                row.remove();
+            }
+        }
+
+        function submitOrder(event) {
+            event.preventDefault();
+            const response = document.getElementById('response');
+            
+            // Construire le XML SOAP
+            const items = [];
+            document.querySelectorAll('.item-row').forEach(row => {
+                const sku = row.querySelector('input[type="text"]').value;
+                const qty = row.querySelector('input[type="number"]').value;
+                items.push(`
+                    <item>
+                        <sku>${sku}</sku>
+                        <qty>${qty}</qty>
+                    </item>
+                `);
+            });
+
+            const soapEnvelope = `<?xml version='1.0' encoding='UTF-8'?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+    <soapenv:Header/>
+    <soapenv:Body>
+        <order>
+            <id>${document.getElementById('orderId').value}</id>
+            <customer>
+                <name>${document.getElementById('customerName').value}</name>
+                <email>${document.getElementById('customerEmail').value}</email>
+            </customer>
+            <items>
+                ${items.join('\n')}
+            </items>
+        </order>
+    </soapenv:Body>
+</soapenv:Envelope>`;
+
+            // Envoyer à l'ESB
+            fetch('http://localhost:8080/OrderService', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/xml',
+                    'Accept': 'text/plain'
+                },
+                body: soapEnvelope
+            })
+            .then(res => res.text())
+            .then(text => {
+                response.className = 'success';
+                response.textContent = 'Commande envoyée avec succès: ' + text;
+            })
+            .catch(err => {
+                response.className = 'error';
+                response.textContent = 'Erreur: ' + err.message;
+            });
+
+            return false;
+        }
+    </script>
+</body>
+</html>
